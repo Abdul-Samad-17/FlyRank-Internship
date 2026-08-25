@@ -55,7 +55,7 @@ shows a cached copy; the badges carry a cache-buster to prevent this, but if it 
 anyway: check your repo on github.com first (your saved version is there), then reopen via
 the badge or **File → Open notebook → GitHub tab**.
 
----
+---   
 
 ## Moment 2 — Hugging Face data access (before Week 3)
 
