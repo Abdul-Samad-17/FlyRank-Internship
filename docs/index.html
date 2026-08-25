@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prioritizing Content Refresh — FlyRank Research Paper</title>
+  <meta name="description" content="A decision-support machine learning model for ranking content refresh priority across FlyRank's publishing portfolio. Random Forest achieves Precision@50 of 0.740 vs 0.240 baseline.">
+  <meta name="robots" content="index, follow">
+  <meta property="og:title" content="Prioritizing Content Refresh: A Decision-Support Model for FlyRank's Content Portfolio">
+  <meta property="og:description" content="Capstone research paper presenting an ML framework for content refresh triage using 30,000 anonymized pages. Best model: Random Forest with Precision@50 = 0.740.">
+  <meta property="og:type" content="article">
+  <meta name="theme-color" content="#FBFAF8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <!-- Sticky Navigation Bar -->
+  <nav class="sticky-nav" id="main-nav">
+    <div class="nav-container">
+      <span class="nav-brand">FlyRank Research</span>
+      <ul class="nav-links">
+        <li><a href="#abstract">Abstract</a></li>
+        <li><a href="#introduction">Introduction</a></li>
+        <li><a href="#data">Data</a></li>
+        <li><a href="#methodology">Methodology</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#limitations">Limitations</a></li>
+        <li><a href="#recommendations">Recommendations</a></li>
+        <li><a href="#reproducibility">Reproducibility</a></li>
+        <li><a href="#acknowledgments">Credit</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="paper-container">
+
+    <!-- Title & Paper Header -->
+    <header class="paper-header">
+      <span class="section-num">Capstone Research Paper</span>
+      <h1>Prioritizing Content Refresh: A Decision-Support Model for FlyRank's Content Portfolio</h1>
+      <div class="paper-meta">
+        <div class="meta-item"><span class="meta-label">Dataset:</span> FlyRank ML Internship Starter (30,000 rows)</div>
+        <div class="meta-item"><span class="meta-label">Validation:</span> Client Holdout Split</div>
+        <div class="meta-item"><span class="meta-label">Primary Metric:</span> Precision@50 (0.740 vs 0.240 baseline)</div>
+      </div>
+    </header>
+
+    <!-- Section 1: Abstract -->
+    <section id="abstract" class="paper-section">
+      <span class="section-num">01</span>
+      <h2>Abstract</h2>
+      
+      <div class="callout-box">
+        <div class="callout-title">Executive Abstract</div>
+        <p>
+          Content decay poses an ongoing operational challenge for digital publishers, requiring systematic identification of existing assets that require editorial refresh before organic performance degrades further. We evaluate a supervised machine learning framework trained on 30,000 anonymized content items to rank pages for content refresh review using a client-holdout validation design (27,675 training rows and 2,325 test rows across holdout clients). Comparing multiple classification algorithms against a heuristic baseline rule, a Random Forest model trained on 52 privacy-safe behavioral, freshness, and engagement signals achieved superior overall discrimination (ROC AUC 0.750 vs baseline 0.627). Under an honest client-holdout evaluation, the model achieved a Precision@50 of 0.740 (74.0% precision in top 50 recommendations) compared to 0.240 (24.0%) for rule-based heuristics against a target base declining rate of 54.2%. These measured results demonstrate that machine learning can substantially improve reviewer efficiency by prioritizing high-decline-risk pages for human editorial review without relying on client identity or unmasked URLs.
+        </p>
+      </div>
+    </section>
+
+    <!-- Section 2: Introduction / Problem Statement -->
+    <section id="introduction" class="paper-section">
+      <span class="section-num">02</span>
+      <h2>Introduction &amp; Problem Statement</h2>
+      
+      <p>
+        Digital content portfolios decay over time as search intent evolves, information becomes outdated, and competitor content emerges. For large-scale publishing operations managing thousands of active URLs, manually auditing every page on a recurring schedule is labor-intensive and inefficient. Editorial teams frequently struggle to allocate limited refresh capacity toward pages where interventions yield the highest return, leading to missed traffic opportunities and wasted resources on high-performing or unsalvageable content.
+      </p>
+      
+      <p>
+        Machine learning provides a structured decision-support mechanism to address this triage problem. By modeling historical performance dynamics, click-through rates, impression stability, and scroll engagement across 30,000 anonymized pages, our scoring framework produces a prioritized queue of candidates requiring editorial attention. Rather than automating publishing decisions, the system acts as a reviewer aid—flagging pages with measured performance declines and visible search demand to maximize human editorial efficiency.
+      </p>
+    </section>
+
+    <!-- Section 3: Data -->
+    <section id="data" class="paper-section">
+      <span class="section-num">03</span>
+      <h2>Data Summary &amp; Scope</h2>
+      
+      <p>
+        The empirical foundation for this study is derived from the anonymized FlyRank Content Refresh dataset (30,000 content item records). To maintain strict public-safety and privacy standards, all raw URLs, article titles, domain names, client brand names, and search query strings were omitted.
+      </p>
+
+      <div class="data-table-wrapper">
+        <table class="data-spec-table">
+          <thead>
+            <tr>
+              <th>Dataset Dimension</th>
+              <th>Specification</th>
+              <th>Public-Safety &amp; Scope Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Total Scored Volume</td>
+              <td>30,000 pages</td>
+              <td>Anonymized content portfolio dataset</td>
+            </tr>
+            <tr>
+              <td>Target Positive Rate</td>
+              <td>54.2% (16,262 rows)</td>
+              <td>Binary target: <code>is_declining_label</code></td>
+            </tr>
+            <tr>
+              <td>Validation Split</td>
+              <td>Client Holdout (27,675 train / 2,325 test)</td>
+              <td>Evaluated on unseen client sites to test generalization</td>
+            </tr>
+            <tr>
+              <td>Observation Window</td>
+              <td>90-day aggregate windows</td>
+              <td>Includes search impressions, clicks, sessions, and engagement</td>
+            </tr>
+            <tr>
+              <td>Feature Space</td>
+              <td>52 numerical &amp; encoded signals</td>
+              <td>Behavioral, freshness, visibility, and intent tiers</td>
+            </tr>
+            <tr>
+              <td>Excluded Fields</td>
+              <td>URLs, titles, domains, query strings</td>
+              <td>Strict zero-leakage and zero-PII policy</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="caption-text">Table 1 — Dataset parameters and scope specification (Source: <code>work/outputs/capstone_metrics.json</code>).</p>
+    </section>
+
+    <!-- Section 4: Methodology -->
+    <section id="methodology" class="paper-section">
+      <span class="section-num">04</span>
+      <h2>Methodology &amp; Model Architecture</h2>
+      
+      <p>
+        Our objective is to rank existing published assets according to their likelihood of requiring editorial refresh. Rather than relying on rigid static rules, we frame content decay identification as a supervised ranking problem supported by multi-signal classification.
+      </p>
+
+      <h3>Label Definition &amp; Target Variable</h3>
+      <p>
+        The target label <code>is_declining_label</code> is a binary indicator identifying pages experiencing measured organic performance decay (negative traffic trajectory across consecutive 90-day observation windows). Out of 30,000 total scored rows, 16,262 rows meet the decline criteria, establishing a base rate of 54.2%.
+      </p>
+
+      <h3>Feature Representation (52 Signals)</h3>
+      <p>
+        The model processes 52 privacy-safe feature inputs categorized into four primary vectors:
+      </p>
+      <ul>
+        <li><strong>Traffic &amp; Impression Volume:</strong> Log-transformed 90-day impressions (<code>log_impressions_90d</code>), clicks (<code>log_clicks_90d</code>), sessions (<code>log_sessions_90d</code>), and active impression days (<code>days_with_impressions</code>).</li>
+        <li><strong>Search Visibility &amp; Engagement:</strong> Average SERP position (<code>avg_position</code>), click-through rate (<code>ctr</code>), GA4 scroll depth rate (<code>scroll_rate</code>), user engagement rate (<code>engagement_rate</code>), and AI traffic percentage (<code>ai_traffic_pct</code>).</li>
+        <li><strong>Content Freshness &amp; Metadata:</strong> Content age in days (<code>content_age_days</code>), days since last update (<code>days_since_last_update</code>), word count (<code>word_count</code>), and character count (<code>char_count</code>).</li>
+        <li><strong>Categorical Tiers:</strong> One-hot encoded indicators for <code>competition_level</code>, <code>content_type</code>, <code>main_intent</code>, <code>age_tier</code>, <code>freshness_tier</code>, <code>word_count_tier</code>, <code>impression_tier</code>, and <code>position_tier</code>.</li>
+      </ul>
+
+      <h3>Baseline Rule Definition</h3>
+      <p>
+        To ensure rigorous evaluation, we benchmark machine learning models against a transparent heuristic rule (<code>baseline_rules</code>). The baseline flags pages with high demand (>= 500 impressions), declining trend, low CTR (< 0.5), or outdated content (> 180 days since update), producing a baseline score normalized between 0 and 100.
+      </p>
+
+      <h3>Validation Strategy &amp; Leakage Control</h3>
+      <p>
+        We employ a strict <strong>Client Holdout Split</strong> (<code>split_strategy: client_holdout</code>). Entire client domains are isolated into the test set (2,325 rows) while training on remaining clients (27,675 rows). This prevents cross-client signal contamination. All features were audited to guarantee zero target leakage (no post-period metrics or label-derived variables are used as model inputs).
+      </p>
+    </section>
+
+    <!-- Section 5: Results -->
+    <section id="results" class="paper-section">
+      <span class="section-num">05</span>
+      <h2>Empirical Results &amp; Model Comparison</h2>
+      
+      <p>
+        Evaluating all models under the identical <strong>Client Holdout Split</strong> (2,325 holdout evaluation rows), the Random Forest classifier demonstrated superior performance across discrimination, average precision, and top-queue concentration.
+      </p>
+
+      <div class="data-table-wrapper">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Model Architecture</th>
+              <th>ROC AUC</th>
+              <th>Avg Precision</th>
+              <th>Precision@20</th>
+              <th>Precision@50</th>
+              <th>Precision@100</th>
+              <th>Recall</th>
+              <th>F1 Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="highlight-row">
+              <td><strong>Random Forest (Selected)</strong></td>
+              <td><strong>0.750</strong></td>
+              <td><strong>0.618</strong></td>
+              <td><strong>0.650</strong></td>
+              <td><strong>0.740</strong></td>
+              <td><strong>0.720</strong></td>
+              <td><strong>0.744</strong></td>
+              <td><strong>0.640</strong></td>
+            </tr>
+            <tr>
+              <td>Decision Tree</td>
+              <td>0.742</td>
+              <td>0.575</td>
+              <td>0.550</td>
+              <td>0.620</td>
+              <td>0.600</td>
+              <td>0.716</td>
+              <td>0.634</td>
+            </tr>
+            <tr>
+              <td>Logistic Regression</td>
+              <td>0.700</td>
+              <td>0.522</td>
+              <td>0.350</td>
+              <td>0.400</td>
+              <td>0.440</td>
+              <td>0.567</td>
+              <td>0.566</td>
+            </tr>
+            <tr>
+              <td>Baseline Heuristic Rules</td>
+              <td>0.627</td>
+              <td>0.468</td>
+              <td>0.150</td>
+              <td>0.240</td>
+              <td>0.360</td>
+              <td>0.189</td>
+              <td>0.274</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="caption-text">Table 2 — Model comparison on client-holdout test set (Source: <code>work/outputs/capstone_metrics.json</code>).</p>
+
+      <div class="figure-container">
+        <img src="assets/figures/model-comparison.png" alt="Model comparison chart showing Precision@50 and ROC AUC across algorithms" class="paper-figure">
+        <p class="caption-text">Figure 1 — Performance comparison across model architectures. Random Forest achieves a Precision@50 of 0.740 (3.08x lift over baseline rules).</p>
+      </div>
+
+      <h3>Feature Importance Analysis</h3>
+      <p>
+        Analyzing feature importances from the primary Random Forest model reveals that search impression consistency and overall impression volume exert the strongest predictive influence on performance decay risk:
+      </p>
+
+      <div class="figure-container">
+        <img src="assets/figures/feature-importance.png" alt="Top 10 feature importances for Random Forest model" class="paper-figure">
+        <p class="caption-text">Figure 2 — Top 10 feature importance weights derived from Random Forest (Source: <code>work/notebooks/capstone.ipynb</code>).</p>
+      </div>
+
+      <p>
+        The top four predictors—<code>days_with_impressions</code> (0.1581), <code>log_impressions_90d</code> (0.1286), <code>avg_position</code> (0.1092), and <code>content_age_days</code> (0.0952)—account for over 49% of total model decision weight. Pages with declining active impression days and low position stability represent high-priority review candidates.
+      </p>
+    </section>
+
+    <!-- Section 6: Limitations -->
+    <section id="limitations" class="paper-section">
+      <span class="section-num">06</span>
+      <h2>Limitations &amp; Honest Framing</h2>
+      
+      <p>
+        To maintain academic and professional credibility, the boundaries and explicit limitations of this model must be clearly stated:
+      </p>
+
+      <ul>
+        <li><strong>Proxy Target Definition:</strong> The target variable <code>is_declining_label</code> captures historical performance decay across 90-day observation windows. It operates as an operational proxy for content staleness and does not directly observe factual accuracy, editorial writing quality, or reader sentiment.</li>
+        <li><strong>Observational Scope:</strong> All findings are strictly observational. Correlations between input signals (e.g., <code>days_with_impressions</code>) and performance outcomes do not imply causal relationships without controlled A/B experiment validation.</li>
+        <li><strong>Domain Variance:</strong> Under a strict client-holdout evaluation, Precision@50 measured 0.740, representing a noticeable shift from random split metrics. This highlights domain-specific variation across different publishing portfolios.</li>
+        <li><strong>Single-Month Snapshot:</strong> The dataset reflects a single observation period. Seasonal traffic fluctuations or major search engine algorithm revisions require regular model retraining.</li>
+        <li><strong>Decision-Support Boundary:</strong> Model outputs serve solely as a decision-support tool for editorial reviewers, not as an automated publishing trigger.</li>
+      </ul>
+    </section>
+
+    <!-- Section 7: Ranked Recommendations -->
+    <section id="recommendations" class="paper-section">
+      <span class="section-num">07</span>
+      <h2>Ranked Recommendations &amp; Action Playbook</h2>
+      
+      <p>
+        Out of 30,000 scored content items, the pipeline categorized 3,602 pages into the <strong>high-confidence queue</strong> (P80 final score threshold >= 63.6), 11,398 items into medium confidence, and 15,000 into low confidence.
+      </p>
+
+      <h3>Action Queue Breakdown</h3>
+      <div class="card-grid">
+        <div class="action-card">
+          <div class="card-header">
+            <span class="card-title">refresh</span>
+            <span class="card-count">8,178 items</span>
+          </div>
+          <p class="card-body">High decline risk with active search demand. Recommended for primary editorial update and freshness expansion.</p>
+        </div>
+
+        <div class="action-card">
+          <div class="card-header">
+            <span class="card-title">refresh_and_review_ctr</span>
+            <span class="card-count">6,657 items</span>
+          </div>
+          <p class="card-body">Significant search impressions but low SERP click-through rate. Requires headline, title tag, and meta description review.</p>
+        </div>
+
+        <div class="action-card">
+          <div class="card-header">
+            <span class="card-title">refresh_and_review_engagement</span>
+            <span class="card-count">1,990 items</span>
+          </div>
+          <p class="card-body">Solid impression volume but low GA4 scroll rate or engagement. Recommended for content depth restructuring.</p>
+        </div>
+
+        <div class="action-card">
+          <div class="card-header">
+            <span class="card-title">expand_and_refresh</span>
+            <span class="card-count">82 items</span>
+          </div>
+          <p class="card-body">High demand potential paired with short word count. Recommended for comprehensive content expansion.</p>
+        </div>
+
+        <div class="action-card">
+          <div class="card-header">
+            <span class="card-title">monitor</span>
+            <span class="card-count">13,093 items</span>
+          </div>
+          <p class="card-body">Stable or growing traffic metrics. No immediate editorial action needed; scheduled for ongoing monitoring.</p>
+        </div>
+      </div>
+
+      <h3>Top Priority Queue Preview</h3>
+      <p>
+        Below is a preview of the top 5 highest-priority refresh candidates from the final scoring pipeline:
+      </p>
+
+      <div class="data-table-wrapper">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Final Score</th>
+              <th>Model Prob</th>
+              <th>Action Category</th>
+              <th>Impressions</th>
+              <th>Sessions</th>
+              <th>Trend</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>#1</td>
+              <td>81.6 / 100</td>
+              <td>0.782</td>
+              <td><span class="badge badge-action">refresh_and_review_ctr</span></td>
+              <td>12,834</td>
+              <td>66</td>
+              <td>down</td>
+            </tr>
+            <tr>
+              <td>#2</td>
+              <td>81.4 / 100</td>
+              <td>0.788</td>
+              <td><span class="badge badge-action">refresh_and_review_ctr</span></td>
+              <td>8,064</td>
+              <td>23</td>
+              <td>down</td>
+            </tr>
+            <tr>
+              <td>#3</td>
+              <td>81.4 / 100</td>
+              <td>0.847</td>
+              <td><span class="badge badge-action">refresh_and_review_ctr</span></td>
+              <td>2,498</td>
+              <td>9</td>
+              <td>down</td>
+            </tr>
+            <tr>
+              <td>#4</td>
+              <td>81.0 / 100</td>
+              <td>0.774</td>
+              <td><span class="badge badge-action">refresh_and_review_ctr</span></td>
+              <td>13,790</td>
+              <td>27</td>
+              <td>down</td>
+            </tr>
+            <tr>
+              <td>#5</td>
+              <td>80.9 / 100</td>
+              <td>0.815</td>
+              <td><span class="badge badge-action">refresh_and_review_ctr</span></td>
+              <td>3,393</td>
+              <td>5</td>
+              <td>down</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="caption-text">Table 3 — Top 5 priority refresh queue candidates (Source: <code>work/outputs/capstone_metrics.json</code>).</p>
+    </section>
+
+    <!-- Section 8: Reproducibility -->
+    <section id="reproducibility" class="paper-section">
+      <span class="section-num">08</span>
+      <h2>Reproducibility</h2>
+
+      <p>
+        All code, data pipelines, and evaluation scripts are version-controlled and publicly accessible. The full analysis can be reproduced end-to-end from a clean clone of the repository using only the bundled anonymized dataset (no external BigQuery credentials or private data access required).
+      </p>
+
+      <h3>Repository &amp; Pipeline</h3>
+      <p>
+        The canonical repository contains all scripts under <code>scripts/</code>. Running the complete pipeline takes approximately 30–60 seconds on a modern laptop:
+      </p>
+      <pre><code>git clone https://github.com/flyrank-bih/flyrank-ml-internship-starter
+cd flyrank-ml-internship-starter
+pip install -r requirements.txt
+python scripts/run_all.py</code></pre>
+
+      <h3>Source Notebooks</h3>
+      <p>The analysis was developed across the following weekly milestone notebooks, each available via Colab or local Jupyter:</p>
+
+      <div class="data-table-wrapper">
+        <table class="data-spec-table">
+          <thead>
+            <tr>
+              <th>Notebook</th>
+              <th>Week</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><a href="https://github.com/flyrank-bih/flyrank-ml-internship-starter/blob/main/work/notebooks/capstone.ipynb" target="_blank" rel="noopener">capstone.ipynb</a></td>
+              <td>Final</td>
+              <td>Capstone summary — question, data, results, limitations, recommendations</td>
+            </tr>
+            <tr>
+              <td><a href="https://github.com/flyrank-bih/flyrank-ml-internship-starter/blob/main/work/notebooks/w03_data_contract.ipynb" target="_blank" rel="noopener">w03_data_contract.ipynb</a></td>
+              <td>Week 3</td>
+              <td>Data contract definition, schema audit, and exclusion documentation</td>
+            </tr>
+            <tr>
+              <td><a href="https://github.com/flyrank-bih/flyrank-ml-internship-starter/blob/main/work/notebooks/w04_baseline_score.ipynb" target="_blank" rel="noopener">w04_baseline_score.ipynb</a></td>
+              <td>Week 4</td>
+              <td>Baseline heuristic rule construction and initial Precision@50 evaluation</td>
+            </tr>
+            <tr>
+              <td><a href="https://github.com/flyrank-bih/flyrank-ml-internship-starter/blob/main/work/notebooks/w05_model.ipynb" target="_blank" rel="noopener">w05_model.ipynb</a></td>
+              <td>Week 5</td>
+              <td>Model training (logistic regression, decision tree, random forest)</td>
+            </tr>
+            <tr>
+              <td><a href="https://github.com/flyrank-bih/flyrank-ml-internship-starter/blob/main/work/notebooks/w06_validation_audit.ipynb" target="_blank" rel="noopener">w06_validation_audit.ipynb</a></td>
+              <td>Week 6</td>
+              <td>Validation audit under honest client-holdout split, leakage re-check</td>
+            </tr>
+            <tr>
+              <td><a href="https://github.com/flyrank-bih/flyrank-ml-internship-starter/blob/main/work/notebooks/w07_action_playbook.ipynb" target="_blank" rel="noopener">w07_action_playbook.ipynb</a></td>
+              <td>Week 7</td>
+              <td>Action playbook construction, reason code assignment, queue exports</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="caption-text">All notebooks open directly in Google Colab via the badge links embedded at the top of each file.</p>
+
+      <h3>Key Outputs</h3>
+      <ul>
+        <li><code>outputs/model_results.json</code> — Full model metrics (all splits and models)</li>
+        <li><code>outputs/summary.json</code> — Pipeline summary with queue statistics</li>
+        <li><code>outputs/refresh_queue.csv</code> — Full ranked refresh queue (30,000 rows)</li>
+        <li><code>work/outputs/capstone_metrics.json</code> — Consolidated metrics referenced by this paper</li>
+      </ul>
+    </section>
+
+    <!-- Section 9: Acknowledgments & Data Credit -->
+    <section id="acknowledgments" class="paper-section">
+      <span class="section-num">09</span>
+      <h2>Acknowledgments &amp; Data Credit</h2>
+
+      <div class="callout-box">
+        <div class="callout-title">Data Credit</div>
+        <p>Built on the FlyRank ML Internship dataset — <a href="https://flyrank.ai" target="_blank" rel="noopener">flyrank.ai</a></p>
+      </div>
+
+      <p>
+        This research paper was produced as part of the FlyRank ML Internship capstone assignment. The anonymized starter dataset was provided by FlyRank for educational and research purposes. All statistical modeling, feature engineering, validation design, and written analysis are original work.
+      </p>
+
+      <p>
+        The scoring pipeline and all supporting scripts were developed using open-source Python libraries: <code>scikit-learn</code>, <code>pandas</code>, <code>numpy</code>, and <code>matplotlib</code>. No proprietary tools, paid APIs, or client-identifying data are used at any stage of this pipeline.
+      </p>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p>FlyRank Capstone Research Paper · Built on the <a href="https://flyrank.ai" target="_blank" rel="noopener">FlyRank ML Internship</a> dataset · Static page, no tracking.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
