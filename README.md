@@ -1,4 +1,7 @@
-# FlyRank ML Internship — Starter Repo
+# FlyRank ML Internship — Capstone & Research Paper
+
+> 🌐 **Live Research Paper Web Page**: [https://abdul-samad-17.github.io/FlyRank-Internship/](https://abdul-samad-17.github.io/FlyRank-Internship/)  
+> 📄 **Deployed URL File**: [`submission/paper_url.txt`](submission/paper_url.txt)
 
 **Applied Search Intelligence: Google Search Ranking & Discoverability**
 
